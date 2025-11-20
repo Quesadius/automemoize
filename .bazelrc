@@ -13,14 +13,11 @@ test --test_output=errors
 
 # --- Coverage Configuration ---
 # Standard coverage settings
-coverage --combined_report=lcov
-coverage --instrumentation_filter=//...
-
-coverage --copt=-fprofile-instr-generate
-coverage --copt=-fcoverage-mapping
-
-# The linker needs to include the profile runtime
-coverage --linkopt=-fprofile-instr-generate
+test:coverage --combined_report=lcov
+test:coverage --instrumentation_filter=//...
+test:coverage --copt=-fprofile-instr-generate
+test:coverage --copt=-fcoverage-mapping
+test:coverage --linkopt=-fprofile-instr-generate
 
 # --- Local Overrides ---
 # This must be the last line. 
