@@ -1,0 +1,38 @@
+name: Super-Linter
+
+# Run this workflow on Pull Requests and Pushes to the main branch
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Lint Code Base
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+      # To report GitHub Actions status checks
+      statuses: write
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # Full git history is needed to check changed files
+          fetch-depth: 0
+
+      # Step 2: Run Super-Linter
+      - name: Lint Code Base
+        uses: super-linter/super-linter@v6
+        env:
+          # To report GitHub Actions status checks
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set your default branch (usually main or master)
+          DEFAULT_BRANCH: main
+          # validates all code in the repo on a push, but only changed files on a PR
+          VALIDATE_ALL_CODEBASE: false
