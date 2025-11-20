@@ -12,11 +12,11 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # Setup Bazel (using Bazelisk is recommended for version management)
     - name: Mount Bazel Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/bazel
@@ -30,7 +30,7 @@ jobs:
         bazel coverage --config=coverage //... 
 
     - name: Upload to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         # The combined report is usually found here
         files: bazel-out/_coverage/_coverage_report.dat
