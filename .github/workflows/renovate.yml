@@ -4,7 +4,7 @@ permissions: read-all
 on:
   # Run periodically (e.g., every 4 hours) or on demand
   schedule:
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
   workflow_dispatch:
 jobs:
   renovate:

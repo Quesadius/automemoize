@@ -3,24 +3,24 @@ permissions: read-all
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-    - name: Setup Bazel
-      uses: bazelbuild/setup-bazelisk@v3
+      - name: Setup Bazel
+        uses: bazelbuild/setup-bazelisk@v3
 
-    - name: Build
-      run: bazel build //...
+      - name: Build
+        run: bazel build //...
 
-    - name: Test
-      run: bazel test //...
+      - name: Test
+        run: bazel test //...
 
   lint:
     runs-on: ubuntu-latest
@@ -28,6 +28,6 @@ jobs:
       - uses: actions/checkout@v5
       - name: Setup Bazel
         uses: bazelbuild/setup-bazelisk@v3
-      
+
       - name: Check Buildifier formatting
         run: bazel run //:buildifier_check

@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       validate_all_codebase:
-        description: 'Validate All Codebase'
+        description: "Validate All Codebase"
         required: false
-        default: true 
+        default: true
         type: boolean
 jobs:
   build:
