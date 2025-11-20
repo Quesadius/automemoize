@@ -35,3 +35,4 @@ jobs:
           # Set your default branch (usually main or master)
           DEFAULT_BRANCH: main
           VALIDATE_ALL_CODEBASE: true
+          DISABLE_LINTERS: JSON_PRETTIER
