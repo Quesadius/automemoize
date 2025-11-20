@@ -1,4 +1,5 @@
 name: Code Coverage
+contents: read
 
 on:
   push:
