@@ -1,5 +1,5 @@
 name: Super-Linter
-contents: read
+permissions: read-all
 
 # Run this workflow on Pull Requests and Pushes to the main branch
 on:

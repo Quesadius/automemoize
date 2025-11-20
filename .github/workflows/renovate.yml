@@ -1,5 +1,5 @@
 name: Renovate
-contents: read
+permissions: read-all
 
 on:
   # Run periodically (e.g., every 4 hours) or on demand
