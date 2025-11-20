@@ -1,0 +1,14 @@
+# .bazelrc
+
+build --cxxopt=-std=c++20
+
+# Standard coverage settings
+coverage --combined_report=lcov
+coverage --instrumentation_filter=//...
+
+# Generate gcov-compatible data (works for both GCC and Clang)
+coverage --copt=-fprofile-arcs
+coverage --copt=-ftest-coverage
+
+# Use --coverage to link the correct runtime for Clang (replaces -lgcov)
+coverage --linkopt=--coverage
