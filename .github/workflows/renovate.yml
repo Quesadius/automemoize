@@ -1,0 +1,20 @@
+name: Renovate
+on:
+  # Run periodically (e.g., every 4 hours) or on demand
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v40.3.4
+        with:
+          # Tells Renovate to look at the current repo
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_TOKEN }}
