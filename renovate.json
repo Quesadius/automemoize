@@ -1,18 +1,18 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "bazel": { "enabled": true },
-  "bazel-module": { "enabled": true },
-  "packageRules": [
-    {
-      "matchManagers": ["bazel", "bazel-module"],
-      "groupName": "Bazel dependencies"
-    }
-  ],
-  "postUpgradeTasks": {
-    "commands": ["bazel mod deps --lockfile_mode=update"],
-    "fileFilters": ["MODULE.bazel.lock"],
-    "executionMode": "branch"
-  },
-  "allowedCommands": ["^bazel mod deps"]
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended"],
+	"bazel": { "enabled": true },
+	"bazel-module": { "enabled": true },
+	"packageRules": [
+		{
+			"matchManagers": ["bazel", "bazel-module"],
+			"groupName": "Bazel dependencies"
+		}
+	],
+	"postUpgradeTasks": {
+		"commands": ["bazel mod deps --lockfile_mode=update"],
+		"fileFilters": ["MODULE.bazel.lock"],
+		"executionMode": "branch"
+	},
+	"allowedCommands": ["^bazel mod deps"]
 }
