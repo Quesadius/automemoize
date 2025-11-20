@@ -2,9 +2,7 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 
-int Add(int a, int b) {
-  return a + b;
-}
+int Add(int a, int b) { return a + b; }
 
 void MemoizedMatchesOriginal(int a, int b) {
   auto memoized_add = automemoize(Add);
