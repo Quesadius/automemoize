@@ -2,4 +2,4 @@ bazel-*
 .DS_Store
 .vscode/
 *.swp
-.agent/
+.agent/*
