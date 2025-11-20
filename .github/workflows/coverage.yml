@@ -3,38 +3,38 @@ permissions: read-all
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   coverage:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
+      - name: Checkout code
+        uses: actions/checkout@v5
 
-    # Setup Bazel (using Bazelisk is recommended for version management)
-    - name: Mount Bazel Cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/bazel
-        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel') }}
-        restore-keys: |
-          ${{ runner.os }}-bazel-
+      # Setup Bazel (using Bazelisk is recommended for version management)
+      - name: Mount Bazel Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel
+          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel') }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-
 
-    - name: Run Tests with Coverage
-      # We use the 'coverage' config defined in Step 1
-      run: |
-        bazel coverage --config=coverage //... 
+      - name: Run Tests with Coverage
+        # We use the 'coverage' config defined in Step 1
+        run: |
+          bazel coverage --config=coverage //...
 
-    - name: Upload to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        # The combined report is usually found here
-        files: bazel-out/_coverage/_coverage_report.dat
-        fail_ci_if_error: true
-        token: ${{ secrets.CODECOV_TOKEN }}
-        verbose: true
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          # The combined report is usually found here
+          files: bazel-out/_coverage/_coverage_report.dat
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
