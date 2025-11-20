@@ -6,6 +6,13 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      validate_all_codebase:
+        description: 'Validate All Codebase'
+        required: false
+        default: true 
+        type: boolean
 jobs:
   build:
     name: Lint Code Base
@@ -31,4 +38,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Set your default branch (usually main or master)
           DEFAULT_BRANCH: main
-          VALIDATE_ALL_CODEBASE: true
+          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase || false }}
