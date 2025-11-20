@@ -6,26 +6,15 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
-    
-    workflow_dispatch:
-      inputs:
-        validate_all_codebase:
-          description: 'Validate All Codebase'
-          required: false
-          default: true 
-        type: boolean
-
 jobs:
   build:
     name: Lint Code Base
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: read
       # To report GitHub Actions status checks
       statuses: write
-
     steps:
       # Step 1: Checkout the code
       - name: Checkout Code
@@ -42,7 +31,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Set your default branch (usually main or master)
           DEFAULT_BRANCH: main
-          # If 'inputs' exists (manual run), use that value. 
-          # If 'inputs' is empty (automatic run), default to false.
-          # validates all code in the repo on a push, but only changed files on a PR
-          VALIDATE_ALL_CODEBASE: ${{ inputs.validate_all_codebase || false }}
+          VALIDATE_ALL_CODEBASE: true
