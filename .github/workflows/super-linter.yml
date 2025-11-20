@@ -30,6 +30,7 @@ jobs:
         with:
           # Full git history is needed to check changed files
           fetch-depth: 0
+          persist-credentials: false
 
       # Step 2: Run Super-Linter
       - name: Lint Code Base
