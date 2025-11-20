@@ -30,7 +30,7 @@ jobs:
         bazel coverage --config=coverage //... 
 
     - name: Upload to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         # The combined report is usually found here
         files: bazel-out/_coverage/_coverage_report.dat
