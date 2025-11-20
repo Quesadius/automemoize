@@ -1,13 +1,13 @@
 name: Super-Linter
 permissions: read-all
 
-# Run this workflow on Pull Requests and Pushes to the main branch
 on:
   push:
     branches: [main, master]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+
 jobs:
   build:
     name: Lint Code Base

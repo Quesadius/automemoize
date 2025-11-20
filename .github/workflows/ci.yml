@@ -1,11 +1,13 @@
 name: CI
+permissions: read-all
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-permissions: read-all
+
 
 jobs:
   build-and-test:
