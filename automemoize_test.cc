@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <utility>
 
 TEST(AutomemoizeTest, BasicMemoization) {
   int call_count = 0;
