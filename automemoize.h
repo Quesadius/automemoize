@@ -1,3 +1,5 @@
+#ifndef AUTOMEMOIZE_H
+#define AUTOMEMOIZE_H
 
 #include <concepts>
 #include <functional>
@@ -106,3 +108,5 @@ auto automemoize(F f) {
     }
   };
 }
+
+#endif  // AUTOMEMOIZE_H
