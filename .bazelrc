@@ -16,12 +16,11 @@ test --test_output=errors
 coverage --combined_report=lcov
 coverage --instrumentation_filter=//...
 
-# Explicitly generate gcov-compatible data (GCC/Clang)
-coverage --copt=-fprofile-arcs
-coverage --copt=-ftest-coverage
+coverage --copt=-fprofile-instr-generate
+coverage --copt=-fcoverage-mapping
 
-# Link correct runtime for Clang/GCC
-coverage --linkopt=--coverage
+# The linker needs to include the profile runtime
+coverage --linkopt=-fprofile-instr-generate
 
 # --- Local Overrides ---
 # This must be the last line. 
