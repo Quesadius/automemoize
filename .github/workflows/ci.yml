@@ -1,4 +1,5 @@
 name: CI
+contents: read
 
 on:
   push:
