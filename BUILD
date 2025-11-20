@@ -2,7 +2,7 @@ load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 buildifier(
-    name = "buildifier.check",
+    name = "buildifier_check",
     exclude_patterns = [
         "./.git/*",
     ],
@@ -14,7 +14,7 @@ buildifier(
 )
 
 buildifier_test(
-    name = "buildifier.test",
+    name = "buildifier_test",
     srcs = ["BUILD"],
     lint_mode = "warn",
 )
