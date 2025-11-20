@@ -1,14 +1,29 @@
 # .bazelrc
 
+# --- Build Environment ---
+# Standardize C++ version
 build --cxxopt=-std=c++20
 
+# --- Quality of Life (Standard for most teams) ---
+# Force color output even on CI systems that might not auto-detect it
+common --color=yes
+# Print full command lines on failure (helps debugging)
+build --verbose_failures
+test --test_output=errors
+
+# --- Coverage Configuration ---
 # Standard coverage settings
 coverage --combined_report=lcov
 coverage --instrumentation_filter=//...
 
-# Generate gcov-compatible data (works for both GCC and Clang)
+# Explicitly generate gcov-compatible data (GCC/Clang)
 coverage --copt=-fprofile-arcs
 coverage --copt=-ftest-coverage
 
-# Use --coverage to link the correct runtime for Clang (replaces -lgcov)
+# Link correct runtime for Clang/GCC
 coverage --linkopt=--coverage
+
+# --- Local Overrides ---
+# This must be the last line. 
+# It loads local settings if the file exists, and ignores it if it doesn't.
+try-import .bazelrc.user
