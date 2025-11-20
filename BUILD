@@ -1,8 +1,29 @@
+load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+buildifier(
+    name = "buildifier.check",
+    exclude_patterns = [
+        "./.git/*",
+    ],
+    lint_mode = "warn",
+    lint_warnings = [
+        "-cc-native",
+    ],
+    mode = "diff",
+)
+
+buildifier_test(
+    name = "buildifier.test",
+    srcs = ["BUILD"],
+    lint_mode = "warn",
+)
+
 cc_library(
-name = "automemoize",
+    name = "automemoize",
     srcs = ["automemoize.h"],
-    deps = ["@absl//absl/container:flat_hash_map"],
     copts = ["-std=c++20"],
+    deps = ["@absl//absl/container:flat_hash_map"],
 )
 
 cc_test(
@@ -12,7 +33,6 @@ cc_test(
         ":automemoize",
         "@googletest//:gtest_main",
     ],
-    copts = ["-std=c++20"],
 )
 
 cc_binary(
@@ -22,7 +42,6 @@ cc_binary(
         ":automemoize",
         "@google_benchmark//:benchmark_main",
     ],
-    copts = ["-std=c++20"],
 )
 
 cc_test(
@@ -33,5 +52,4 @@ cc_test(
         "@fuzztest//fuzztest",
         "@fuzztest//fuzztest:fuzztest_gtest_main",
     ],
-    copts = ["-std=c++20"],
 )

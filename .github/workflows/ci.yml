@@ -9,7 +9,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
 
@@ -21,3 +20,13 @@ jobs:
 
     - name: Test
       run: bazel test //...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bazel
+        uses: bazelbuild/setup-bazelisk@v3
+      
+      - name: Check Buildifier formatting
+        run: bazel run //:buildifier_check
