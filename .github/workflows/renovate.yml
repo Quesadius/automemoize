@@ -18,5 +18,6 @@ jobs:
           # Tells Renovate to look at the current repo
           configurationFile: renovate.json
           token: ${{ secrets.RENOVATE_TOKEN }}
+          repositories: '["Quesadius/automemoize"]'   
         env:
-          RENOVATE_AUTODISCOVER: true
+          LOG_LEVEL: debug
