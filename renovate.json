@@ -27,8 +27,7 @@
         ],
         "executionMode": "branch"
     },
-    "allowPostUpgradeCommandTemplating": true,
-    "allowedPostUpgradeCommands": [
+    "allowedCommands": [
         "^bazel mod deps"
     ]
 }
