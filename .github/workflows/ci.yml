@@ -1,5 +1,5 @@
 name: CI
-contents: read
+permissions: read-all
 
 on:
   push:

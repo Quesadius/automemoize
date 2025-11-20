@@ -1,5 +1,5 @@
 name: Code Coverage
-contents: read
+permissions: read-all
 
 on:
   push:
