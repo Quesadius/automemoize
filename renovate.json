@@ -6,7 +6,8 @@
 	"packageRules": [
 		{
 			"matchManagers": ["bazel", "bazel-module"],
-			"groupName": "Bazel dependencies"
+			"groupName": "Bazel dependencies",
+			"minimumReleaseAge": "14 days"
 		}
 	],
 	"postUpgradeTasks": {
