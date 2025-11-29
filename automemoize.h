@@ -9,6 +9,20 @@
 
 #include "absl/container/flat_hash_map.h"
 
+// Automemoize
+//
+// Automemoize is a simple memoization library for C++.
+// It memoizes the result of a function call based on its arguments.
+// The result is cached and returned on subsequent calls with the same arguments.
+//
+// Example:
+//
+//   auto memoized_add = automemoize([](int a, int b) { return a + b; });
+//   EXPECT_EQ(memoized_add(1, 2), 3);
+//   EXPECT_EQ(memoized_add(1, 2), 3);  // Cached result
+//
+//  automemomize is thread-compatible.
+
 namespace internal {
 // Decay tuple types
 // Converts tuple<const int&, string&> -> tuple<int, string>
