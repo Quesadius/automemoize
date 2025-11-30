@@ -108,37 +108,47 @@ TEST(AutomemoizeTest, MemberFunctionSupport) {
 
 int noexcept_func(int a) noexcept { return a + 1; }
 
+TEST(AutomemoizeTest, NoexceptSupport) {
+  auto m_noexcept = automemoize(noexcept_func);
+  EXPECT_EQ(m_noexcept(1), 2);
+}
+
 struct RefQualified {
   int operator()(int a) & { return a + 1; }
 };
+
+TEST(AutomemoizeTest, RefQualifiedSupport) {
+  RefQualified rq;
+  auto m_rq = automemoize(rq);
+  EXPECT_EQ(m_rq(1), 2);
+}
 
 struct NoExceptFunctor {
   int operator()(int a) const noexcept { return a + 1; }
 };
 
-TEST(AutomemoizeTest, EdgeCaseSupport) {
-  // 1. noexcept free function
-  auto m_noexcept = automemoize(noexcept_func);
-  EXPECT_EQ(m_noexcept(1), 2);
-
-  // 2. Ref-qualified (lvalue)
-  RefQualified rq;
-  auto m_rq = automemoize(rq);
-  EXPECT_EQ(m_rq(1), 2);
-
-  // 3. Noexcept functor
+TEST(AutomemoizeTest, NoexceptFunctorSupport) {
   NoExceptFunctor nef;
   auto m_nef = automemoize(nef);
   EXPECT_EQ(m_nef(1), 2);
+}
 
-  // 4. noexcept lambda
-  auto noexcept_lambda = [](int a) noexcept { return a + 1; };
-  auto m_noexcept_lambda = automemoize(noexcept_lambda);
-  EXPECT_EQ(m_noexcept_lambda(1), 2);
+TEST(AutomemoizeTest, LambdaSupport) {
+  auto lambda = [](int a) { return a + 1; };
+  auto m_lambda = automemoize(lambda);
+  EXPECT_EQ(m_lambda(1), 2);
 }
 
 // Helper for rvalue test
 std::string return_same(std::string s) { return s; }
+
+TEST(AutomemoizeTest, RvalueSupport) {
+  std::string input = "hello";
+  auto m_str = automemoize(return_same);
+  // Pass as rvalue. If moved into key, function receives empty string.
+  std::string result = m_str(std::move(input));
+  EXPECT_EQ(result, "hello");
+}
 
 // Helper for const member test
 struct ConstMember {
@@ -150,6 +160,12 @@ struct ConstMember {
     return H::combine(std::move(h), c.val);
   }
 };
+
+TEST(AutomemoizeTest, ConstMemberSupport) {
+  ConstMember cm;
+  auto m_const = automemoize(&ConstMember::get);
+  EXPECT_EQ(m_const(cm), 10);
+}
 
 // Helper for noexcept member test
 struct NoexceptMember {
@@ -164,20 +180,7 @@ struct NoexceptMember {
   }
 };
 
-TEST(AutomemoizeTest, CoverageGaps) {
-  // 1. Rvalue bug check
-  auto m_str = automemoize(return_same);
-  std::string input = "hello";
-  // Pass as rvalue. If moved into key, function receives empty string.
-  std::string result = m_str(std::move(input));
-  EXPECT_EQ(result, "hello");
-
-  // 2. Const member function
-  ConstMember cm;
-  auto m_const = automemoize(&ConstMember::get);
-  EXPECT_EQ(m_const(cm), 10);
-
-  // 3. Noexcept member function
+TEST(AutomemoizeTest, NoexceptMemberSupport) {
   NoexceptMember nm;
   auto m_noexcept = automemoize(&NoexceptMember::get);
   EXPECT_EQ(m_noexcept(nm), 20);
