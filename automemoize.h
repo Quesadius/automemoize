@@ -13,7 +13,8 @@
 //
 // Automemoize is a simple memoization library for C++.
 // It memoizes the result of a function call based on its arguments.
-// The result is cached and returned on subsequent calls with the same arguments.
+// The result is cached and returned on subsequent calls with the same
+// arguments.
 //
 // Example:
 //
