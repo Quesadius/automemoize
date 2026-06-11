@@ -131,24 +131,24 @@ auto automemoize(F f) {
   // If function takes (const string&), we must store (string) in the map.
   using ArgsTuple = internal::cache_key_t<F>;
 
-  return [f = std::move(f),
-          cache = absl::flat_hash_map<ArgsTuple, ReturnType>()](
-             auto&&... args) mutable -> ReturnType {
-    // Construct the key by forwarding.
-    // If args are rvalues, they are MOVED into 'key'.
-    // 'args' are now potentially empty/moved-from.
-    ArgsTuple key(std::forward<decltype(args)>(args)...);
+  return
+      [f = std::move(f), cache = absl::flat_hash_map<ArgsTuple, ReturnType>()](
+          auto&&... args) mutable -> ReturnType {
+        // Construct the key by forwarding.
+        // If args are rvalues, they are MOVED into 'key'.
+        // 'args' are now potentially empty/moved-from.
+        ArgsTuple key(std::forward<decltype(args)>(args)...);
 
-    auto it = cache.find(key);
-    if (it == cache.end()) {
-      // Invoke f before touching the map: f may re-enter this memoizer
-      // (e.g. recursive memoization through a self-reference), so no
-      // iterator can be held across the call.
-      ReturnType result = std::apply(f, key);
-      it = cache.emplace(std::move(key), std::move(result)).first;
-    }
-    return it->second;
-  };
+        auto it = cache.find(key);
+        if (it == cache.end()) {
+          // Invoke f before touching the map: f may re-enter this memoizer
+          // (e.g. recursive memoization through a self-reference), so no
+          // iterator can be held across the call.
+          ReturnType result = std::apply(f, key);
+          it = cache.emplace(std::move(key), std::move(result)).first;
+        }
+        return it->second;
+      };
 }
 
 #endif  // AUTOMEMOIZE_H_
