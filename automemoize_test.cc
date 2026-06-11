@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <functional>
 #include <string>
 #include <utility>
 
@@ -184,4 +186,55 @@ TEST(AutomemoizeTest, NoexceptMemberSupport) {
   NoexceptMember nm;
   auto m_noexcept = automemoize(&NoexceptMember::get);
   EXPECT_EQ(m_noexcept(nm), 20);
+}
+
+// A function may re-enter its own memoizer (recursive memoization). The
+// implementation must not hold cache iterators across the invocation of the
+// wrapped function, or re-entrant inserts would invalidate them.
+TEST(AutomemoizeTest, ReentrantRecursion) {
+  int call_count = 0;
+  std::function<int64_t(int)> memo_fib;
+  memo_fib = automemoize(std::function<int64_t(int)>([&](int n) -> int64_t {
+    call_count++;
+    if (n <= 1) return n;
+    return memo_fib(n - 1) + memo_fib(n - 2);
+  }));
+
+  EXPECT_EQ(memo_fib(40), 102334155);
+  // Linear, not exponential: each n computed exactly once.
+  EXPECT_EQ(call_count, 41);
+
+  EXPECT_EQ(memo_fib(40), 102334155);
+  EXPECT_EQ(call_count, 41);  // Fully cached
+}
+
+// Whether automemoize accepts a callable. Must be checked through a template
+// (substitution context) so that constraint failures evaluate to false
+// instead of being hard errors.
+template <typename F>
+concept CanAutomemoize = requires(F f) { automemoize(f); };
+
+// Sanity check: supported callables satisfy the concept.
+static_assert(CanAutomemoize<int (*)(int)>);
+
+// Callables whose signature cannot be deduced (e.g. generic lambdas) must
+// fail the constraint cleanly, not hard-error inside function_traits.
+TEST(AutomemoizeTest, RejectsGenericLambdaCleanly) {
+  auto generic = [](auto x) { return x; };
+  static_assert(!CanAutomemoize<decltype(generic)>);
+}
+
+// Functions whose decayed arguments cannot be compared must also fail the
+// constraint cleanly.
+struct NotComparable {
+  int v = 0;
+  template <typename H>
+  friend H AbslHashValue(H h, const NotComparable& n) {
+    return H::combine(std::move(h), n.v);
+  }
+};
+
+TEST(AutomemoizeTest, RejectsNonComparableArgsCleanly) {
+  auto f = [](NotComparable n) { return n.v; };
+  static_assert(!CanAutomemoize<decltype(f)>);
 }
