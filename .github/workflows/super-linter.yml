@@ -34,5 +34,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Set your default branch (usually main or master)
           DEFAULT_BRANCH: main
-          VALIDATE_JSON_PRETTIER: false
           VALIDATE_ALL_CODEBASE: true

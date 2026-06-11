@@ -11,14 +11,6 @@ common --color=yes
 build --verbose_failures
 test --test_output=errors
 
-# --- Coverage Configuration ---
-# Standard coverage settings
-test:coverage --combined_report=lcov
-test:coverage --instrumentation_filter=//...
-test:coverage --copt=-fprofile-instr-generate
-test:coverage --copt=-fcoverage-mapping
-test:coverage --linkopt=-fprofile-instr-generate
-
 # --- Local Overrides ---
 # This must be the last line. 
 # It loads local settings if the file exists, and ignores it if it doesn't.
