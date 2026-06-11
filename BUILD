@@ -21,9 +21,11 @@ buildifier_test(
 
 cc_library(
     name = "automemoize",
-    srcs = ["automemoize.h"],
-    copts = ["-std=c++20"],
-    deps = ["@absl//absl/container:flat_hash_map"],
+    hdrs = ["automemoize.h"],
+    deps = [
+        "@absl//absl/container:flat_hash_map",
+        "@absl//absl/hash",
+    ],
 )
 
 cc_test(
