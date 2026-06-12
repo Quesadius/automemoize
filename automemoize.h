@@ -44,6 +44,9 @@
 //    consumed only on a miss. Arguments needing conversion (e.g. a string
 //    literal for a std::string parameter) are converted before lookup.
 //  - Results are returned by value (a copy of the cached result).
+//  - Keys are matched with operator==, so an argument value that does not
+//    compare equal to itself (e.g. floating-point NaN) is never cached:
+//    such calls invoke f every time and do not grow the cache.
 //  - Each memoizer owns its own cache; copying the memoizer copies the
 //    cache. f may re-enter its own memoizer (recursive memoization).
 //  - automemoize is thread-compatible: concurrent calls on the same
@@ -268,6 +271,12 @@ ReturnType lookup_or_compute(Cache& cache, Invoke&& invoke,
     // the call.
     ReturnType result = std::invoke(std::forward<Invoke>(invoke),
                                     std::forward<CallArgs>(args)...);
+    // A key that does not compare equal to itself (e.g. contains NaN) can
+    // never be found again and violates the hash map's key contract, so
+    // such calls are passed through uncached.
+    if (!(key == key)) {
+      return result;
+    }
     return cache.emplace(std::move(key), std::move(result)).first->second;
   } else {
     // Conversion path: some argument requires conversion to its stored
@@ -278,6 +287,10 @@ ReturnType lookup_or_compute(Cache& cache, Invoke&& invoke,
       return it->second;
     }
     ReturnType result = std::apply(std::forward<Invoke>(invoke), key);
+    // See above: never insert a key that fails self-equality.
+    if (!(key == key)) {
+      return result;
+    }
     return cache.emplace(std::move(key), std::move(result)).first->second;
   }
 }
