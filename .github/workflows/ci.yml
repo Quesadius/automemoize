@@ -38,4 +38,4 @@ jobs:
         uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3
 
       - name: Check Buildifier formatting
-        run: bazel run //:buildifier_check
+        run: bazel run //tools:buildifier_check

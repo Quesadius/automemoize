@@ -1,27 +1,18 @@
-load("@buildifier_prebuilt//:rules.bzl", "buildifier", "buildifier_test")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
-buildifier(
-    name = "buildifier_check",
-    exclude_patterns = [
-        "./.git/*",
-    ],
-    lint_mode = "warn",
-    lint_warnings = [
-        "-cc-native",
-    ],
-    mode = "diff",
-)
+# The buildifier tooling lives in //tools so that this package only loads
+# from non-dev dependencies: consumers of @automemoize load this file, and
+# dev_dependency repos (like buildifier_prebuilt) do not exist for them.
 
-buildifier_test(
-    name = "buildifier_test",
-    srcs = ["BUILD"],
-    lint_mode = "warn",
+exports_files(
+    ["BUILD"],
+    visibility = ["//tools:__pkg__"],
 )
 
 cc_library(
     name = "automemoize",
     hdrs = ["automemoize.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@absl//absl/container:flat_hash_map",
         "@absl//absl/hash",
