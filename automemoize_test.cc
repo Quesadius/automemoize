@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -212,7 +213,7 @@ TEST(AutomemoizeTest, ReentrantRecursion) {
 // (substitution context) so that constraint failures evaluate to false
 // instead of being hard errors.
 template <typename F>
-concept CanAutomemoize = requires(F f) { automemoize(f); };
+concept CanAutomemoize = requires(F f) { automemoize(std::move(f)); };
 
 // Sanity check: supported callables satisfy the concept.
 static_assert(CanAutomemoize<int (*)(int)>);
@@ -237,4 +238,106 @@ struct NotComparable {
 TEST(AutomemoizeTest, RejectsNonComparableArgsCleanly) {
   auto f = [](NotComparable n) { return n.v; };
   static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Functions whose decayed arguments cannot be hashed must fail the
+// constraint cleanly.
+struct NotHashable {
+  int v = 0;
+  bool operator==(const NotHashable& o) const { return v == o.v; }
+};
+
+TEST(AutomemoizeTest, RejectsUnhashableArgsCleanly) {
+  auto f = [](NotHashable n) { return n.v; };
+  static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Non-const lvalue-reference parameters are out-parameters: their writes
+// would not be replayed on cache hits, so they are rejected.
+TEST(AutomemoizeTest, RejectsOutParams) {
+  auto f = [](int& x) { return ++x; };
+  static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Rvalue-reference parameters cannot be re-invoked from a stored key.
+TEST(AutomemoizeTest, RejectsRvalueRefParams) {
+  auto f = [](std::string&& s) { return s.size(); };
+  static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Memoizing a void function is meaningless (there is no result to cache).
+TEST(AutomemoizeTest, RejectsVoidReturn) {
+  auto f = [](int) {};
+  static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Reference returns cannot be stored in the cache.
+TEST(AutomemoizeTest, RejectsReferenceReturn) {
+  auto f = [](int) -> const int& {
+    static const int v = 0;
+    return v;
+  };
+  static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Results must be copyable: they are both stored and returned.
+TEST(AutomemoizeTest, RejectsMoveOnlyReturn) {
+  auto f = [](int x) { return std::make_unique<int>(x); };
+  static_assert(!CanAutomemoize<decltype(f)>);
+}
+
+// Move-only callables (e.g. lambdas capturing a unique_ptr) are supported.
+TEST(AutomemoizeTest, MoveOnlyCallable) {
+  auto p = std::make_unique<int>(5);
+  auto m = automemoize([p = std::move(p)](int x) { return x + *p; });
+  EXPECT_EQ(m(1), 6);
+  EXPECT_EQ(m(1), 6);
+}
+
+TEST(AutomemoizeTest, ZeroArgFunction) {
+  int calls = 0;
+  auto m = automemoize([&calls]() {
+    ++calls;
+    return 7;
+  });
+  EXPECT_EQ(m(), 7);
+  EXPECT_EQ(m(), 7);
+  EXPECT_EQ(calls, 1);
+}
+
+// Counts copy constructions, to pin down the copy guarantees below.
+struct Tracked {
+  explicit Tracked(int v) : v(v) {}
+  Tracked(const Tracked& o) : v(o.v) { ++copies; }
+  Tracked(Tracked&& o) noexcept = default;
+  Tracked& operator=(const Tracked&) = default;
+  Tracked& operator=(Tracked&&) = default;
+
+  bool operator==(const Tracked& o) const { return v == o.v; }
+  template <typename H>
+  friend H AbslHashValue(H h, const Tracked& t) {
+    return H::combine(std::move(h), t.v);
+  }
+
+  int v;
+  static inline int copies = 0;
+};
+
+// When the argument types match the key types exactly, a cache hit performs
+// no argument copies, and rvalue arguments are only consumed on a miss.
+TEST(AutomemoizeTest, NoArgCopiesOnCacheHit) {
+  auto m = automemoize([](const Tracked& t) { return t.v * 2; });
+  Tracked t(21);
+
+  Tracked::copies = 0;
+  EXPECT_EQ(m(t), 42);  // Miss: exactly one copy, into the stored key.
+  EXPECT_EQ(Tracked::copies, 1);
+
+  EXPECT_EQ(m(t), 42);  // Hit: zero copies.
+  EXPECT_EQ(Tracked::copies, 1);
+
+  Tracked t2(21);
+  EXPECT_EQ(m(std::move(t2)), 42);  // Hit: rvalue arg is not consumed.
+  EXPECT_EQ(Tracked::copies, 1);
+  EXPECT_EQ(t2.v, 21);
 }
