@@ -25,7 +25,8 @@
 //
 // Supported callables: function pointers, member function pointers (the
 // object becomes the leading argument), lambdas, and functors with a single
-// non-template operator() — including move-only ones.
+// non-template operator() — including move-only ones and, under C++23,
+// functors with a static operator().
 //
 // Requirements, enforced at compile time:
 //  - The decayed argument types must be hashable with absl::Hash and
@@ -109,6 +110,14 @@ struct memfn_signature<R (C::*)(Args...) & noexcept> : signature<R, Args...> {};
 template <typename C, typename R, typename... Args>
 struct memfn_signature<R (C::*)(Args...) const & noexcept>
     : signature<R, Args...> {};
+
+// C++23 functors may declare a static operator(), in which case
+// &T::operator() is a plain function pointer rather than a member pointer.
+template <typename R, typename... Args>
+struct memfn_signature<R (*)(Args...)> : signature<R, Args...> {};
+
+template <typename R, typename... Args>
+struct memfn_signature<R (*)(Args...) noexcept> : signature<R, Args...> {};
 
 // function_traits deduces {return_type, args_tuple} for a callable. The
 // primary template is empty so that unsupported callables (e.g. generic

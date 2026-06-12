@@ -286,6 +286,20 @@ TEST(AutomemoizeTest, RejectsMoveOnlyReturn) {
   static_assert(!CanAutomemoize<decltype(f)>);
 }
 
+// C++23 functors with a static operator() are supported: &T::operator()
+// is a plain function pointer there, not a member function pointer.
+#if defined(__cpp_static_call_operator)
+struct StaticCallOperator {
+  static int operator()(int x) { return x * 3; }
+};
+
+TEST(AutomemoizeTest, StaticCallOperatorSupport) {
+  auto m = automemoize(StaticCallOperator{});
+  EXPECT_EQ(m(2), 6);
+  EXPECT_EQ(m(2), 6);
+}
+#endif  // defined(__cpp_static_call_operator)
+
 // Move-only callables (e.g. lambdas capturing a unique_ptr) are supported.
 TEST(AutomemoizeTest, MoveOnlyCallable) {
   auto p = std::make_unique<int>(5);
