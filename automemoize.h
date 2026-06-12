@@ -48,6 +48,10 @@
 //    cache. f may re-enter its own memoizer (recursive memoization).
 //  - automemoize is thread-compatible: concurrent calls on the same
 //    instance require external synchronization.
+//
+// For memoizing recursive computations, see automemoize_recursive below.
+// For defining a memoized function in one step (akin to Python's
+// @functools.cache decorator), see the AUTOMEMOIZED macro below.
 
 namespace automemoize_internal {
 
@@ -57,6 +61,17 @@ struct signature {
   using return_type = R;
   using args_tuple = std::tuple<Args...>;
 };
+
+// Traits for an explicitly spelled function type R(Args...). The primary
+// template is empty so that non-function types fail constraints cleanly.
+template <typename Sig>
+struct signature_traits {};
+
+template <typename R, typename... Args>
+struct signature_traits<R(Args...)> : signature<R, Args...> {};
+
+template <typename R, typename... Args>
+struct signature_traits<R(Args...) noexcept> : signature<R, Args...> {};
 
 // Signature of a member function pointer type, EXCLUDING the object
 // parameter. Used to deduce the signature of a functor's operator().
@@ -206,18 +221,113 @@ struct TupleEq {
   }
 };
 
-template <typename F>
-concept memoizable =
+// Whether a {return_type, args_tuple} signature can be memoized; see the
+// "Requirements" section of the file comment.
+template <typename Traits>
+concept memoizable_signature =
     requires {
-      typename function_traits<F>::return_type;
-      typename function_traits<F>::args_tuple;
-    } && !std::is_void_v<typename function_traits<F>::return_type> &&
-    !std::is_reference_v<typename function_traits<F>::return_type> &&
-    std::copy_constructible<typename function_traits<F>::return_type> &&
-    params_memoizable<typename function_traits<F>::args_tuple>::value &&
-    requires(const cache_key_t<F>& key) {
-      { absl::Hash<cache_key_t<F>>{}(key) } -> std::convertible_to<std::size_t>;
-    } && tuple_elements_equality_comparable<cache_key_t<F>>::value;
+      typename Traits::return_type;
+      typename Traits::args_tuple;
+    } && !std::is_void_v<typename Traits::return_type> &&
+    !std::is_reference_v<typename Traits::return_type> &&
+    std::copy_constructible<typename Traits::return_type> &&
+    params_memoizable<typename Traits::args_tuple>::value &&
+    requires(const decay_tuple_t<typename Traits::args_tuple>& key) {
+      {
+        absl::Hash<decay_tuple_t<typename Traits::args_tuple>>{}(key)
+      } -> std::convertible_to<std::size_t>;
+    } &&
+    tuple_elements_equality_comparable<
+        decay_tuple_t<typename Traits::args_tuple>>::value;
+
+template <typename F>
+concept memoizable = memoizable_signature<function_traits<F>>;
+
+// Shared memoization core: look up the key built from `args` in `cache`,
+// invoking `invoke` to compute the result on a miss. `invoke` must be
+// callable both with the original arguments (fast path) and with lvalue
+// references to the stored key elements (conversion path).
+template <typename KeyTuple, typename ReturnType, typename Cache,
+          typename Invoke, typename... CallArgs>
+ReturnType lookup_or_compute(Cache& cache, Invoke&& invoke,
+                             CallArgs&&... args) {
+  if constexpr (query_matches_key<KeyTuple, CallArgs...>::value) {
+    // Fast path: argument types match the key exactly, so look up through
+    // a tuple of references — no copies on a cache hit.
+    const auto query = std::tie(std::as_const(args)...);
+    if (auto it = cache.find(query); it != cache.end()) {
+      return it->second;
+    }
+    // Copy the arguments into the stored key BEFORE invoking, so the key
+    // cannot be affected by the call; then forward the originals with
+    // their original value categories (rvalues are moved into the call,
+    // not into the key).
+    KeyTuple key(args...);
+    // Invoke before touching the map: the computation may re-enter this
+    // memoizer (recursive memoization), so no iterator can be held across
+    // the call.
+    ReturnType result = std::invoke(std::forward<Invoke>(invoke),
+                                    std::forward<CallArgs>(args)...);
+    return cache.emplace(std::move(key), std::move(result)).first->second;
+  } else {
+    // Conversion path: some argument requires conversion to its stored
+    // type (e.g. a string literal for a std::string parameter). Convert
+    // once into the key, then look up and invoke from the key.
+    KeyTuple key(std::forward<CallArgs>(args)...);
+    if (auto it = cache.find(key); it != cache.end()) {
+      return it->second;
+    }
+    ReturnType result = std::apply(std::forward<Invoke>(invoke), key);
+    return cache.emplace(std::move(key), std::move(result)).first->second;
+  }
+}
+
+// The memoizing wrapper returned by automemoize_recursive: invokes f with
+// a reference to itself as the first argument, so recursive calls through
+// that reference are cached.
+template <typename Sig, typename F>
+class RecursiveMemoizer;
+
+template <typename R, typename... Args, typename F>
+class RecursiveMemoizer<R(Args...), F> {
+ public:
+  explicit RecursiveMemoizer(F f) : f_(std::move(f)) {}
+
+  template <typename... CallArgs>
+  R operator()(CallArgs&&... args) {
+    return lookup_or_compute<KeyTuple, R>(
+        cache_,
+        [this](auto&&... inner) -> R {
+          return std::invoke(f_, *this,
+                             std::forward<decltype(inner)>(inner)...);
+        },
+        std::forward<CallArgs>(args)...);
+  }
+
+ private:
+  using KeyTuple = std::tuple<std::decay_t<Args>...>;
+
+  F f_;
+  absl::flat_hash_map<KeyTuple, R, TupleHash, TupleEq> cache_;
+};
+
+// Whether F can serve as the callable of RecursiveMemoizer<Sig, F>: it must
+// accept the memoizer itself as the leading argument, followed by the
+// signature's arguments, and return the signature's return type.
+template <typename R, typename F, typename Self, typename ArgsTuple>
+struct is_recursively_invocable : std::false_type {};
+
+template <typename R, typename F, typename Self, typename... Args>
+struct is_recursively_invocable<R, F, Self, std::tuple<Args...>>
+    : std::bool_constant<
+          std::is_invocable_r_v<R, F&, Self&, const std::decay_t<Args>&...>> {};
+
+template <typename Sig, typename F>
+concept recursively_memoizable =
+    memoizable_signature<signature_traits<Sig>> &&
+    is_recursively_invocable<typename signature_traits<Sig>::return_type, F,
+                             RecursiveMemoizer<Sig, F>,
+                             typename signature_traits<Sig>::args_tuple>::value;
 
 }  // namespace automemoize_internal
 
@@ -233,36 +343,64 @@ auto automemoize(F f) {
 
   return [f = std::move(f),
           cache = Cache()](auto&&... args) mutable -> ReturnType {
-    if constexpr (automemoize_internal::query_matches_key<
-                      KeyTuple, decltype(args)...>::value) {
-      // Fast path: argument types match the key exactly, so look up through
-      // a tuple of references — no copies on a cache hit.
-      const auto query = std::tie(std::as_const(args)...);
-      if (auto it = cache.find(query); it != cache.end()) {
-        return it->second;
-      }
-      // Copy the arguments into the stored key BEFORE invoking f, so the
-      // key cannot be affected by the call; then forward the originals to f
-      // with their original value categories (rvalues are moved into f, not
-      // into the key).
-      KeyTuple key(args...);
-      // Invoke f before touching the map: f may re-enter this memoizer
-      // (e.g. recursive memoization through a self-reference), so no
-      // iterator can be held across the call.
-      ReturnType result = std::invoke(f, std::forward<decltype(args)>(args)...);
-      return cache.emplace(std::move(key), std::move(result)).first->second;
-    } else {
-      // Conversion path: some argument requires conversion to its stored
-      // type (e.g. a string literal for a std::string parameter). Convert
-      // once into the key, then look up and invoke from the key.
-      KeyTuple key(std::forward<decltype(args)>(args)...);
-      if (auto it = cache.find(key); it != cache.end()) {
-        return it->second;
-      }
-      ReturnType result = std::apply(f, key);
-      return cache.emplace(std::move(key), std::move(result)).first->second;
-    }
+    return automemoize_internal::lookup_or_compute<KeyTuple, ReturnType>(
+        cache, f, std::forward<decltype(args)>(args)...);
   };
 }
+
+// automemoize_recursive<R(Args...)>(f)
+//
+// Memoizes a recursive computation. f receives the memoizer itself as its
+// first argument, so recursive calls made through it are cached:
+//
+//   auto fib = automemoize_recursive<int64_t(int)>(
+//       [](auto& self, int n) -> int64_t {
+//         if (n <= 1) return n;
+//         return self(n - 1) + self(n - 2);
+//       });
+//   fib(90);  // Computed in linear time; hits the cache thereafter.
+//
+// The signature must be spelled explicitly: a callable taking `auto& self`
+// is a template, so its argument types cannot be deduced. The signature's
+// arguments follow the same rules as automemoize.
+template <typename Sig, typename F>
+  requires automemoize_internal::recursively_memoizable<Sig, F>
+auto automemoize_recursive(F f) {
+  return automemoize_internal::RecursiveMemoizer<Sig, F>(std::move(f));
+}
+
+// AUTOMEMOIZED(ReturnType, name, (params)) { body }
+//
+// Defines a memoized function in one step, analogous to Python's
+// @functools.cache decorator. Calls to `name` anywhere — including
+// recursive calls inside the body itself — go through the cache:
+//
+//   AUTOMEMOIZED(int64_t, fib, (int n)) {
+//     if (n <= 1) return n;
+//     return fib(n - 1) + fib(n - 2);  // Recursive calls are cached.
+//   }
+//
+// Unlike automemoize (which gives each wrapper instance its own cache),
+// this defines ONE function with ONE shared, lazily initialized, unbounded
+// cache, like @functools.cache. The cache is thread-compatible, NOT
+// thread-safe: synchronize externally if `name` is called concurrently.
+//
+// Use at namespace scope only. The parameter list must not use default
+// arguments (it is spelled twice in the expansion), and ReturnType must
+// not contain a bare comma (alias such types first).
+#define AUTOMEMOIZED(ReturnType, name, params)                  \
+  inline ReturnType name##_automemoized_impl params;            \
+  struct name##_automemoized_t {                                \
+    static auto& memoizer() {                                   \
+      static auto memo = automemoize(name##_automemoized_impl); \
+      return memo;                                              \
+    }                                                           \
+    template <typename... Args>                                 \
+    ReturnType operator()(Args&&... args) const {               \
+      return memoizer()(std::forward<Args>(args)...);           \
+    }                                                           \
+  };                                                            \
+  inline constexpr name##_automemoized_t name{};                \
+  inline ReturnType name##_automemoized_impl params
 
 #endif  // AUTOMEMOIZE_H_

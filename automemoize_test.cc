@@ -323,6 +323,73 @@ struct Tracked {
   static inline int copies = 0;
 };
 
+// automemoize_recursive passes the memoizer to f as `self`, so recursive
+// calls are cached: fib(n) takes n+1 invocations, not exponential.
+TEST(AutomemoizeTest, RecursiveCombinator) {
+  int calls = 0;
+  auto fib = automemoize_recursive<int64_t(int)>(
+      [&calls](auto& self, int n) -> int64_t {
+        ++calls;
+        if (n <= 1) return n;
+        return self(n - 1) + self(n - 2);
+      });
+
+  EXPECT_EQ(fib(40), 102334155);
+  EXPECT_EQ(calls, 41);
+
+  EXPECT_EQ(fib(40), 102334155);
+  EXPECT_EQ(calls, 41);  // Fully cached.
+}
+
+// Whether automemoize_recursive accepts a signature/callable pair, checked
+// through a template so constraint failures evaluate to false.
+template <typename Sig, typename F>
+concept CanAutomemoizeRecursive =
+    requires(F f) { automemoize_recursive<Sig>(std::move(f)); };
+
+TEST(AutomemoizeTest, RecursiveCombinatorRejections) {
+  auto fib = [](auto& self, int n) -> int64_t {
+    return n <= 1 ? n : self(n - 1) + self(n - 2);
+  };
+  static_assert(CanAutomemoizeRecursive<int64_t(int), decltype(fib)>);
+  // Not a function type.
+  static_assert(!CanAutomemoizeRecursive<int, decltype(fib)>);
+  // void return.
+  auto noop = [](auto&, int) {};
+  static_assert(!CanAutomemoizeRecursive<void(int), decltype(noop)>);
+  // f not invocable with (self, args...).
+  auto no_self = [](int n) { return n; };
+  static_assert(!CanAutomemoizeRecursive<int(int), decltype(no_self)>);
+}
+
+// AUTOMEMOIZED defines a memoized function whose name resolves to the cache
+// even for recursive calls in its own body, like Python's @functools.cache.
+static int macro_fib_calls = 0;
+AUTOMEMOIZED(int64_t, macro_fib, (int n)) {
+  ++macro_fib_calls;
+  if (n <= 1) return n;
+  return macro_fib(n - 1) + macro_fib(n - 2);
+}
+
+TEST(AutomemoizeTest, AutomemoizedMacro) {
+  EXPECT_EQ(macro_fib(40), 102334155);
+  EXPECT_EQ(macro_fib_calls, 41);  // Recursion went through the cache.
+
+  EXPECT_EQ(macro_fib(40), 102334155);
+  EXPECT_EQ(macro_fib_calls, 41);  // Fully cached.
+}
+
+// AUTOMEMOIZED functions with multiple parameters (the parenthesized
+// parameter list protects commas).
+AUTOMEMOIZED(std::string, macro_concat, (std::string a, std::string b)) {
+  return a + b;
+}
+
+TEST(AutomemoizeTest, AutomemoizedMacroMultipleParams) {
+  EXPECT_EQ(macro_concat("hello", "world"), "helloworld");
+  EXPECT_EQ(macro_concat("hello", "world"), "helloworld");
+}
+
 // When the argument types match the key types exactly, a cache hit performs
 // no argument copies, and rvalue arguments are only consumed on a miss.
 TEST(AutomemoizeTest, NoArgCopiesOnCacheHit) {
