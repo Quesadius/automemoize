@@ -1,0 +1,12 @@
+---
+# Markdownlint configuration for Super-Linter.
+# Start from the default ruleset and relax rules that fight prose-heavy docs.
+default: true
+
+# Line length is not enforced; prose and code samples wrap naturally and
+# Prettier (proseWrap: preserve) leaves line breaks alone.
+MD013: false
+
+# Allow the same sub-heading text (e.g. "Example") under different sections.
+MD024:
+  siblings_only: true
